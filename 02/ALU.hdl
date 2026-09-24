@@ -42,5 +42,38 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-   // Put you code here:
+   // 1. 處理 x 輸入 (zx 與 nx)
+    // 如果 zx == 1，將 x 設為 0
+    Mux16(a=x, b=false, sel=zx, out=x1);
+    // 如果 nx == 1，將 x1 取反相 (!x)
+    Not16(in=x1, out=notx1);
+    Mux16(a=x1, b=notx1, sel=nx, out=x2);
+
+    // 2. 處理 y 輸入 (zy 與 ny)
+    // 如果 zy == 1，將 y 設為 0
+    Mux16(a=y, b=false, sel=zy, out=y1);
+    // 如果 ny == 1，將 y1 取反相 (!y)
+    Not16(in=y1, out=noty1);
+    Mux16(a=y1, b=noty1, sel=ny, out=y2);
+
+    // 3. 執行運算 (f 旗標)
+    // 計算 x & y 與 x + y
+    And16(a=x2, b=y2, out=andOut);
+    Add16(a=x2, b=y2, out=addOut);
+    // 如果 f == 1 輸出加法結果，否則輸出 And 結果
+    Mux16(a=andOut, b=addOut, sel=f, out=fOut);
+
+    // 4. 處理輸出與 ng 旗標 (no 旗標)
+    // 如果 no == 1，將結果取反相
+    Not16(in=fOut, out=notfOut);
+    // 同時將最終結果輸出，並拆成高低 8 位元、以及最高位元（判斷正負）
+    Mux16(a=fOut, b=notfOut, sel=no, out=out, out[0..7]=outLow, out[8..15]=outHigh, out[15]=ng);
+
+    // 5. 計算 zr 旗標 (判斷輸出是否為 0)
+    // 檢查 16 位元中是否有任何一個位元是 1
+    Or8Way(in=outLow, out=orLow);
+    Or8Way(in=outHigh, out=orHigh);
+    Or(a=orLow, b=orHigh, out=anyOne);
+    // 如果沒有任何 1，代表輸出為 0，則 zr = 1
+    Not(in=anyOne, out=zr);
 }

@@ -16,5 +16,12 @@ CHIP DMux4Way {
     OUT a, b, c, d;
 
     PARTS:
-    // Put your code here:
+    // 第一層：用 sel[1] 分成 in0, in1
+    DMux(in=in, sel=sel[1], a=in0, b=in1);
+
+    // 第二層：用 sel[0] 把 in0 分成 a, b
+    DMux(in=in0, sel=sel[0], a=a, b=b);
+
+    // 第二層：用 sel[0] 把 in1 分成 c, d
+    DMux(in=in1, sel=sel[0], a=c, b=d);
 }

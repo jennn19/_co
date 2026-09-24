@@ -13,5 +13,12 @@ CHIP FullAdder {
         carry;   // Left bit of a + b + c
 
     PARTS:
-    // Put you code here:
+    // 第一步：先把 a 和 b 相加
+    HalfAdder(a=a, b=b, sum=s1, carry=c1);
+
+    // 第二步：再把 s1 和 c 相加
+    HalfAdder(a=s1, b=c, sum=sum, carry=c2);
+
+    // 第三步：把兩個 carry 合併
+    Or(a=c1, b=c2, out=carry);
 }

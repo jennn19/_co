@@ -16,5 +16,12 @@ CHIP DMux8Way {
     OUT a, b, c, d, e, f, g, h;
 
     PARTS:
-    // Put your code here:
+    // 第一層：用 sel[2] 把 in 分成兩路
+    DMux(in=in, sel=sel[2], a=in0, b=in1);
+
+    // 第二層：用 sel[1..0] 把 in0 分成 a~d
+    DMux4Way(in=in0, sel=sel[0..1], a=a, b=b, c=c, d=d);
+
+    // 第二層：用 sel[1..0] 把 in1 分成 e~h
+    DMux4Way(in=in1, sel=sel[0..1], a=e, b=f, c=g, d=h);
 }
