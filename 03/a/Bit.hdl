@@ -16,8 +16,8 @@ CHIP Bit {
     PARTS:
     // 先決定要存進 DFF 的值：
     // 如果 load=1，就選 in；如果 load=0，就選舊的 out。
-    Mux(a=out, b=in, sel=load, out=next);
+    Mux(a=oldOut, b=in, sel=load, out=next);
 
     // DFF 是一個 1-bit memory element，會在下一個時間點輸出 next。
-    DFF(in=next, out=out);
+     DFF(in=next, out=out, out=oldOut);
 }
