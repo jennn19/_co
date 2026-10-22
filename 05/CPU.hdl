@@ -39,5 +39,57 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+// 1. 解碼 A 指令與 C 指令 (I15 即為 instruction[15])
+    // I15 = 0 為 A 指令，I15 = 1 為 C 指令
+    Not(in=instruction[15], out=isAinstruction);
+    Not(in=isAinstruction, out=isCinstruction);
+
+    // 2. A 暫存器與其前端的多工器 (Mux16)
+    // 當為 A 指令時，多工器選擇 instruction；C 指令時選擇 ALUoutput
+    Mux16(a=instruction, b=ALUoutput, sel=instruction[15], out=muxAout);
+    
+    // Aload = !I15 + I5 (即 A 指令，或是 C 指令中 dest[A] 位元被設為 1)
+    Or(a=isAinstruction, b=instruction[5], out=loadA);
+    ARegister(in=muxAout, load=loadA, out=Aout, out[0..14]=addressM);
+
+    // 3. 選擇 ALU 的 Y 輸入要來自 A 暫存器還是外部記憶體 inM (由 I12 / a 位元決定)
+    Mux16(a=Aout, b=inM, sel=instruction[12], out=AMout);
+
+    // 4. D 暫存器
+    // Dload = I15 * I4 (必須是 C 指令且 dest[D] 位元為 1)
+    And(a=isCinstruction, b=instruction[4], out=loadD);
+    DRegister(in=ALUoutput, load=loadD, out=Dout);
+
+    // 5. ALU 計算單元
+    // 控制位元依序為 I11(zx), I10(nx), I9(zy), I8(ny), I7(f), I6(no)
+    ALU(x=Dout, y=AMout, 
+        zx=instruction[11], nx=instruction[10], 
+        zy=instruction[9],  ny=instruction[8], 
+        f=instruction[7],   no=instruction[6], 
+        out=ALUoutput, out=outM, zr=zr, ng=ng);
+
+    // 6. 輸出 writeM 控制訊號
+    // writeM = I15 * I3 (必須是 C 指令且 dest[M] 位元為 1)
+    And(a=isCinstruction, b=instruction[3], out=writeM);
+
+    // 7. 程式計數器 PC 的跳躍邏輯判斷 (Program Counter)
+    // 根據 ALU 的輸出狀態標誌 zr 與 ng，計算出大於零的狀態 (ps)
+    Not(in=zr, out=notZr);
+    Not(in=ng, out=notNg);
+    And(a=notZr, b=notNg, out=ps); // ps = !zr * !ng (正數且不為零)
+
+    // 分別計算三種跳躍條件
+    And(a=instruction[2], b=ng, out=jlt); // j1 * ng (小於零則跳躍)
+    And(a=instruction[1], b=zr, out=jeq); // j2 * zr (等於零則跳躍)
+    And(a=instruction[0], b=ps, out=jgt); // j3 * ps (大於零則跳躍)
+
+    // 組合跳躍條件
+    Or(a=jlt, b=jeq, out=jle);
+    Or(a=jle, b=jgt, out=jumpToA);
+
+    // PCload = I15 * jumpToA (必須是 C 指令且符合跳躍條件才能進行跳躍)
+    And(a=isCinstruction, b=jumpToA, out=loadPC);
+
+    // 在 Nand2Tetris 的 PC 元件中，reset 與 load 的優先級高於 inc，故 inc 設為 true 即可
+    PC(in=Aout, load=loadPC, inc=true, reset=reset, out[0..14]=pc);
 }

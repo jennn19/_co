@@ -27,5 +27,26 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    // 1. 分流 load 訊號（位址解碼 Address Decoding）
+    // 觀察最高兩個位元 address[13..14]（即第 14 與 13 位元）：
+    // 00.. 或 01.. (address[14]==0) -> 0x0000 - 0x3FFF -> RAM16K
+    // 10..         (address[14]==1, address[13]==0) -> 0x4000 - 0x5FFF -> Screen
+    // 11..         (address[14]==1, address[13]==1) -> 0x6000 -> Keyboard
+    DMux4Way(in=load, sel=address[13..14], a=loadRAMa, b=loadRAMb, c=loadScreen, d=loadKeyboard);
+    
+    // 因為 RAM16K 佔用了 00 和 01 兩個區間，所以要把這兩個 load 訊號結合
+    Or(a=loadRAMa, b=loadRAMb, out=loadRAM);
+
+    // 2. 實作三個內建的記憶體晶片組
+    // RAM16K 使用 14 位元位址 (address[0..13])
+    RAM16K(in=in, load=loadRAM, address=address[0..13], out=outRAM);
+
+    // Screen 螢幕使用 13 位元位址 (address[0..12])
+    Screen(in=in, load=loadScreen, address=address[0..12], out=outScreen);
+
+    // Keyboard 鍵盤不需要輸入和 load，只需直接輸出當前按鍵
+    Keyboard(out=outKeyboard);
+
+    // 3. 根據輸入的位址，將正確的晶片輸出匯總至 out
+    Mux4Way16(a=outRAM, b=outRAM, c=outScreen, d=outKeyboard, sel=address[13..14], out=out);
 }
